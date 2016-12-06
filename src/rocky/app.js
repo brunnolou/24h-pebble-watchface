@@ -7,11 +7,21 @@ var phi = 0.61803;
 var config = {
   fontSize: 49,
   minutes: (new Date()).getMinutes(),
-  offset: 0,
+  scale: 2,
+  scaleActive: false,
+  minuteScale: 2,
   start: 0,
   tickSize: 10,
-  visibleHours: 2
+  visibleHoursCount: 2
 };
+
+// var dat = require('dat-gui');
+// var gui = new dat.GUI();
+// var controllers = [];
+// controllers.push(gui.add(config, 'minutes', 0, 60).step(1));
+// controllers.push(gui.add(config, 'scale', 0.5, 4));
+// controllers.push(gui.add(config, 'minuteScale', 0.5, 4).step(0.5));
+// controllers.push(gui.add(config, 'scaleActive'));
 
 function getRuler(start, end, divs) {
   var array = [];
@@ -24,14 +34,14 @@ function getRuler(start, end, divs) {
   return array;
 }
 
-function drawTick(ctx, cx, cy, length) {
+function drawTick(ctx, cx, cy, length, color) {
   // Find the end points.
   var x2 = cx;
-  var y2 = cy - length;
+  var y2 = cy + length;
 
   ctx.lineCap = 'square';
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'white';
+  ctx.strokeStyle = color;
 
   // Begin drawing.
   ctx.beginPath();
@@ -52,33 +62,50 @@ function drawHoursText(ctx, x, i) {
 }
 
 function drawHoursTicks(ctx, width, height) {
-  var now = new Date();
-  var visibleHours = config.visibleHours;
+  var fullWidth = width * config.scale;
+  var visibleHoursCount = config.visibleHoursCount;
   var tickSize = config.tickSize;
-  var offset = config.offset;
-  var start = width * now.getMinutes() / 60 / 2 * -1;
-  var end = (width + offset) * visibleHours;
+  var minutesInTheMiddle = (new Date()).getMinutes() / 60 / (config.minuteScale) * -1;
+  var start = fullWidth * minutesInTheMiddle - fullWidth / (config.scale * 2);
+  var end = fullWidth * visibleHoursCount * (config.scaleActive ? config.scale : 1);
 
-  var rulerHalfhour = getRuler(start, end, 4 * visibleHours);
-  var rulerMinute = getRuler(start, end, 24 * visibleHours);
-  var rulerHour = getRuler(start, end, 2 * visibleHours);
+  var rulerMinute = getRuler(start, end, 24 * visibleHoursCount);
+  var rulerHour = getRuler(start, end, 2 * visibleHoursCount);
+
   var y = height * phi;
 
   rulerMinute.forEach(function(x, i) {
-    if (i % 6 === 0) return;
+    var size = tickSize;
+    var vPos = y;
+    var color = 'white';
 
-    drawTick(ctx, x, y, tickSize / -2);
-  });
+    // Minutes.
+    if (i % 1 === 0) {
+      size = tickSize * -1;
+      vPos = y;
+      color = '#aaa';
+    }
 
-  rulerHalfhour.forEach(function(x, i) {
-    if (i % 4 === 0) return;
-    if (i % 2 === 0) return;
+    // Quarter.
+    if (i % 3 === 0) {
+      size = tickSize * -1;
+      vPos = y;
+      color = 'white';
+    }
 
-    drawTick(ctx, x, y, tickSize * -1);
-  });
+    if (i % 6 === 0) {
+      size = tickSize * -2;
+      vPos = y;
+      color = 'white';
+    }
 
-  rulerHour.forEach(function(x) {
-    drawTick(ctx, x, y - 30, tickSize * -4.5);
+    if (i % 12 === 0) {
+      size = tickSize * -5;
+      vPos = y * 1.14;
+      color = 'white';
+    }
+
+    drawTick(ctx, x, vPos, size, color);
   });
 
   rulerHour.forEach(function(x, i) {
@@ -136,6 +163,12 @@ function buid(rocky) {
     // Request the screen to be redrawn on next pass.
     rocky.requestDraw();
   });
+
+  // controllers.forEach((controller) => {
+  //   controller.onChange(function() {
+  //     rocky.requestDraw();
+  //   });
+  // })
 }
 
 module.exports = buid;
